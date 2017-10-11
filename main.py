@@ -5,34 +5,36 @@ serial_obj = Serial(uart_id, pins=('P9', 'P10'))
 
 ######################### READ COILS #########################
 #slave_addr=0x0A
-#starting_address=0x00
-#coil_quantity=20
+#starting_address=0x01
+#coil_quantity=100
 
 #coil_status = serial_obj.read_coils(slave_addr, starting_address, coil_quantity)
-#print('Coil status: ' + ' '.join('{:#010b}'.format(x) for x in coil_status))
+#print('Coil status: ' + ' '.join('{:x}'.format(x) for x in coil_status))
 
 ###################### READ DISCRETE INPUTS ##################
 #slave_addr=0x0A
-#starting_address=0x00
-#input_quantity=20
+#starting_address=0x9
+#input_quantity=100
 
 #input_status = serial_obj.read_discrete_inputs(slave_addr, starting_address, input_quantity)
-#print('Input status: ' + ' '.join('{:#010b}'.format(x) for x in input_status))
+#print('Input status: ' + ' '.join('{:x}'.format(x) for x in input_status))
 
 ###################### READ HOLDING REGISTERS ##################
 #slave_addr=0x0A
 #starting_address=0x00
-#register_quantity=20
+#register_quantity=100
+#signed=False
 
-#register_value = serial_obj.read_holding_registers(slave_addr, starting_address, register_quantity, True)
+#register_value = serial_obj.read_holding_registers(slave_addr, starting_address, register_quantity, signed)
 #print('Holding register value: ' + ' '.join('0x{:02X}'.format(x) for x in register_value))
 
 ###################### READ INPUT REGISTERS ##################
 #slave_addr=0x0A
 #starting_address=0x00
 #register_quantity=20
+#signed=True
 
-#register_value = serial_obj.read_input_registers(slave_addr, starting_address, register_quantity, True)
+#register_value = serial_obj.read_input_registers(slave_addr, starting_address, register_quantity, signed)
 #print('Input register value: ' + ' '.join('0x{:02X}'.format(x) for x in register_value))
 
 ###################### WRITE SINGLE COIL ##################
@@ -48,15 +50,16 @@ serial_obj = Serial(uart_id, pins=('P9', 'P10'))
 #slave_addr=0x0A
 #register_address=0x01
 #register_value=-32768
+#signed=True
 
-#return_flag = serial_obj.write_single_register(slave_addr, register_address, register_value, True)
+#return_flag = serial_obj.write_single_register(slave_addr, register_address, register_value, signed)
 #output_flag = 'Success' if return_flag else 'Failure'
 #print('Writing single coil status: ' + output_flag)
 
 ###################### WRITE MULIPLE COILS ##################
 #slave_addr=0x0A
 #starting_address=0x00
-#output_values=[1,1,1,0,0,0,0,0,1,0,0,0]
+#output_values=[1,1,1,0,0,1,1,1,0,0,1,1,1]
 
 #return_flag = serial_obj.write_multiple_coils(slave_addr, starting_address, output_values)
 #output_flag = 'Success' if return_flag else 'Failure'
