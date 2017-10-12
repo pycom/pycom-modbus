@@ -4,8 +4,8 @@ from network import WLAN
 import machine
 
 ####################### TCP MODBUS #########################
-WIFI_SSID = 'your SSID'
-WIFI_PASS = 'your PASSWORD'
+WIFI_SSID = 'your ssid'
+WIFI_PASS = 'your password'
 
 wlan = WLAN(mode=WLAN.STA)
 wlan.connect(WIFI_SSID, auth=(None, WIFI_PASS), timeout=5000)
@@ -23,41 +23,41 @@ modbus_obj = tcp(slave_ip)
 
 ######################### READ COILS #########################
 #slave_addr=0x0A
-#starting_address=0x01
+#starting_address=0x00
 #coil_quantity=100
 
 #coil_status = modbus_obj.read_coils(slave_addr, starting_address, coil_quantity)
-#print('Coil status: ' + ' '.join('{:x}'.format(x) for x in coil_status))
+#print('Coil status: ' + ' '.join('{:d}'.format(x) for x in coil_status))
 
 ###################### READ DISCRETE INPUTS ##################
 #slave_addr=0x0A
-#starting_address=0x9
+#starting_address=0x0
 #input_quantity=100
 
 #input_status = modbus_obj.read_discrete_inputs(slave_addr, starting_address, input_quantity)
-#print('Input status: ' + ' '.join('{:x}'.format(x) for x in input_status))
+#print('Input status: ' + ' '.join('{:d}'.format(x) for x in input_status))
 
 ###################### READ HOLDING REGISTERS ##################
 #slave_addr=0x0A
 #starting_address=0x00
 #register_quantity=100
-#signed=False
+#signed=True
 
 #register_value = modbus_obj.read_holding_registers(slave_addr, starting_address, register_quantity, signed)
-#print('Holding register value: ' + ' '.join('0x{:02X}'.format(x) for x in register_value))
+#print('Holding register value: ' + ' '.join('{:d}'.format(x) for x in register_value))
 
 ###################### READ INPUT REGISTERS ##################
 #slave_addr=0x0A
 #starting_address=0x00
-#register_quantity=20
+#register_quantity=100
 #signed=True
 
 #register_value = modbus_obj.read_input_registers(slave_addr, starting_address, register_quantity, signed)
-#print('Input register value: ' + ' '.join('0x{:02X}'.format(x) for x in register_value))
+#print('Input register value: ' + ' '.join('{:d}'.format(x) for x in register_value))
 
 ###################### WRITE SINGLE COIL ##################
 #slave_addr=0x0A
-#output_address=0x01
+#output_address=0x00
 #output_value=0xFF00
 
 #return_flag = modbus_obj.write_single_coil(slave_addr, output_address, output_value)
