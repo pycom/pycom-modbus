@@ -63,3 +63,19 @@ class Functions:
         fmt = ('h' if signed else 'H') * quantity
         return struct.pack('>BHHB' + fmt, Const.WRITE_MULTIPLE_REGISTERS, starting_address,
                            quantity, quantity * 2, *register_values)
+
+    def validate_resp_data(self, data, function_code, address, value=None, quantity=None, signed = True):
+        if function_code in [Const.WRITE_SINGLE_COIL, Const.WRITE_SINGLE_REGISTER]:
+           fmt = '>H' + ('h' if signed else 'H')
+           resp_addr, resp_value = struct.unpack(fmt, data)
+
+           if (address == resp_addr) and (value == resp_value):
+               return True
+
+        elif function_code in [Const.WRITE_MULTIPLE_COILS, Const.WRITE_MULTIPLE_REGISTERS]:
+            resp_addr, resp_qty = struct.unpack('>HH', data)
+
+            if (address == resp_addr) and (quantity == resp_qty):
+                return True
+
+        return False

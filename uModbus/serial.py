@@ -20,11 +20,24 @@ class Serial:
 
         return struct.pack('<H',crc)
 
+    def _bytes_to_bool(self, byte_list):
+        bool_list = []
+        for index, byte in enumerate(byte_list):
+            bool_list.extend([bool(byte & (1 << n)) for n in range(8)])
+
+        return bool_list
+
+    def _to_short(self, byte_array, signed = True):
+        response_quantity = int(len(byte_array) / 2)
+        fmt = '>' + (('h' if signed else 'H') * response_quantity)
+
+        return struct.unpack(fmt, byte_array)
+
     def _exit_read(self, response):
 
-        if  response[1] in [Const.READ_COILS, Const.READ_DISCRETE_INPUTS, Const.READ_HOLDING_REGISTERS,
-                             Const.READ_INPUT_REGISTER]:
+        if (Const.READ_COILS <= response[1] <= Const.READ_INPUT_REGISTER):
             expected_len = Const.RESPONSE_HDR_LENGTH + 1 + response[2] + Const.CRC_LENGTH
+
             if len(response) < expected_len:
                 return False
 
@@ -36,7 +49,7 @@ class Serial:
         for x in range(1, 10):
             if self._uart.any():
                 response.extend(self._uart.readall())
-                # Variable length requests may require multiple reads
+                # Variable length function codes may require multiple reads
                 if self._exit_read(response):
                     break
             time.sleep(0.1)
@@ -71,35 +84,6 @@ class Serial:
         hdr_length = Const.RESPONSE_HDR_LENGTH + 1 if count else Const.RESPONSE_HDR_LENGTH
 
         return response[hdr_length : len(response) - Const.CRC_LENGTH]
-
-    def _validate_resp_data(self, data, function_code, address, value=None, quantity=None, signed = True):
-        if function_code in [Const.WRITE_SINGLE_COIL, Const.WRITE_SINGLE_REGISTER]:
-           fmt = '>H' + ('h' if signed else 'H')
-           resp_addr, resp_value = struct.unpack(fmt, data)
-
-           if (address == resp_addr) and (value == resp_value):
-               return True
-
-        elif function_code in [Const.WRITE_MULTIPLE_COILS, Const.WRITE_MULTIPLE_REGISTERS]:
-            resp_addr, resp_qty = struct.unpack('>HH', data)
-
-            if (address == resp_addr) and (quantity == resp_qty):
-                return True
-
-        return False
-
-    def _to_short(self, byte_array, signed = True):
-        response_quantity = int(len(byte_array) / 2)
-        fmt = '>' + (('h' if signed else 'H') * response_quantity)
-
-        return struct.unpack(fmt, byte_array)
-
-    def _bytes_to_bool(self, byte_list):
-        bool_list = []
-        for index, byte in enumerate(byte_list):
-            bool_list.extend([bool(byte & (1 << n)) for n in range(8)])
-
-        return bool_list
 
     def read_coils(self, slave_addr, starting_addr, coil_qty):
         functions = Functions()
@@ -162,7 +146,7 @@ class Serial:
         operation_status = False
         if (response is not None):
             response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_SINGLE_COIL, False)
-            operation_status = self._validate_resp_data(response_pdu, Const.WRITE_SINGLE_COIL,
+            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_SINGLE_COIL,
                                                         output_address, value=output_value, signed=False)
 
         return operation_status
@@ -176,7 +160,7 @@ class Serial:
         operation_status = False
         if (response is not None):
             response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_SINGLE_REGISTER, False)
-            operation_status = self._validate_resp_data(response_pdu, Const.WRITE_SINGLE_REGISTER,
+            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_SINGLE_REGISTER,
                                                         register_address, value=register_value, signed=signed)
 
         return operation_status
@@ -190,7 +174,7 @@ class Serial:
         operation_status = False
         if (response is not None):
             response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_MULTIPLE_COILS, False)
-            operation_status = self._validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_COILS,
+            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_COILS,
                                                         starting_address, quantity=len(output_values))
 
         return operation_status
@@ -204,7 +188,7 @@ class Serial:
         operation_status = False
         if (response is not None):
             response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_MULTIPLE_REGISTERS, False)
-            operation_status = self._validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_REGISTERS,
+            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_REGISTERS,
                                                         starting_address, quantity=len(register_values))
 
         return operation_status
