@@ -34,12 +34,15 @@ class Serial:
         return struct.unpack(fmt, byte_array)
 
     def _exit_read(self, response):
-
-        if (Const.READ_COILS <= response[1] <= Const.READ_INPUT_REGISTER):
+        if response[1] >= Const.ERROR_BIAS:
+            if len(response) < Const.ERROR_RESP_LEN:
+                return False
+        elif (Const.READ_COILS <= response[1] <= Const.READ_INPUT_REGISTER):
             expected_len = Const.RESPONSE_HDR_LENGTH + 1 + response[2] + Const.CRC_LENGTH
-
             if len(response) < expected_len:
                 return False
+        elif len(response) < Const.FIXED_RESP_LEN:
+            return False
 
         return True
 
@@ -56,19 +59,24 @@ class Serial:
 
         return response
 
-    def _send_receive(self, modbus_pdu, slave_addr):
+    def _send_receive(self, modbus_pdu, slave_addr, count):
         serial_pdu = bytearray()
         serial_pdu.append(slave_addr)
         serial_pdu.extend(modbus_pdu)
 
         crc = self._calculate_crc16(serial_pdu)
         serial_pdu.extend(crc)
-
         self._uart.write(serial_pdu)
 
-        return self._uart_read()
+        response = self._uart_read()
+        resp_data = self._validate_resp_hdr(response, slave_addr, modbus_pdu[0], count)
 
-    def _validate_resp_hdr(self, response, slave_addr, function_code, count=False):
+        return resp_data
+
+    def _validate_resp_hdr(self, response, slave_addr, function_code, count):
+
+        if len(response) == 0:
+            raise OSError('No data received from slave')
 
         resp_crc = response[-Const.CRC_LENGTH:]
         expected_crc = self._calculate_crc16(response[0:len(response) - Const.CRC_LENGTH])
@@ -89,12 +97,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.read_coils(starting_addr, coil_qty)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        status_pdu = None
-        if (response is not None):
-            pdu_bytes = self._validate_resp_hdr(response, slave_addr, Const.READ_COILS, True)
-            status_pdu = self._bytes_to_bool(pdu_bytes)
+        resp_data = self._send_receive(modbus_pdu, slave_addr, True)
+        status_pdu = self._bytes_to_bool(resp_data)
 
         return status_pdu
 
@@ -102,12 +106,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.read_discrete_inputs(starting_addr, input_qty)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        status_pdu = None
-        if (response is not None):
-            pdu_bytes = self._validate_resp_hdr(response, slave_addr, Const.READ_DISCRETE_INPUTS, True)
-            status_pdu = self._bytes_to_bool(pdu_bytes)
+        resp_data = self._send_receive(modbus_pdu, slave_addr, True)
+        status_pdu = self._bytes_to_bool(resp_data)
 
         return status_pdu
 
@@ -115,12 +115,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.read_holding_registers(starting_addr, register_qty)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        register_value = None
-        if (response is not None):
-            register_value_pdu = self._validate_resp_hdr(response, slave_addr, Const.READ_HOLDING_REGISTERS, True)
-            register_value = self._to_short(register_value_pdu, signed)
+        resp_data = self._send_receive(modbus_pdu, slave_addr, True)
+        register_value = self._to_short(resp_data, signed)
 
         return register_value
 
@@ -128,12 +124,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.read_input_registers(starting_address, register_quantity)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        register_value = None
-        if (response is not None):
-            register_value_pdu = self._validate_resp_hdr(response, slave_addr, Const.READ_INPUT_REGISTER, True)
-            register_value = self._to_short(register_value_pdu, signed)
+        resp_data = self._send_receive(modbus_pdu, slave_addr, True)
+        register_value = self._to_short(resp_data, signed)
 
         return register_value
 
@@ -141,12 +133,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.write_single_coil(output_address, output_value)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        operation_status = False
-        if (response is not None):
-            response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_SINGLE_COIL, False)
-            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_SINGLE_COIL,
+        resp_data = self._send_receive(modbus_pdu, slave_addr, False)
+        operation_status = functions.validate_resp_data(resp_data, Const.WRITE_SINGLE_COIL,
                                                         output_address, value=output_value, signed=False)
 
         return operation_status
@@ -155,12 +143,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.write_single_register(register_address, register_value, signed)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        operation_status = False
-        if (response is not None):
-            response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_SINGLE_REGISTER, False)
-            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_SINGLE_REGISTER,
+        resp_data = self._send_receive(modbus_pdu, slave_addr, False)
+        operation_status = functions.validate_resp_data(resp_data, Const.WRITE_SINGLE_REGISTER,
                                                         register_address, value=register_value, signed=signed)
 
         return operation_status
@@ -169,12 +153,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.write_multiple_coils(starting_address, output_values)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        operation_status = False
-        if (response is not None):
-            response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_MULTIPLE_COILS, False)
-            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_COILS,
+        resp_data = self._send_receive(modbus_pdu, slave_addr, False)
+        operation_status = functions.validate_resp_data(resp_data, Const.WRITE_MULTIPLE_COILS,
                                                         starting_address, quantity=len(output_values))
 
         return operation_status
@@ -183,12 +163,8 @@ class Serial:
         functions = Functions()
         modbus_pdu = functions.write_multiple_registers(starting_address, register_values, signed)
 
-        response = self._send_receive(modbus_pdu, slave_addr)
-
-        operation_status = False
-        if (response is not None):
-            response_pdu = self._validate_resp_hdr(response, slave_addr, Const.WRITE_MULTIPLE_REGISTERS, False)
-            operation_status = functions.validate_resp_data(response_pdu, Const.WRITE_MULTIPLE_REGISTERS,
+        resp_data = self._send_receive(modbus_pdu, slave_addr, False)
+        operation_status = functions.validate_resp_data(resp_data, Const.WRITE_MULTIPLE_REGISTERS,
                                                         starting_address, quantity=len(register_values))
 
         return operation_status
