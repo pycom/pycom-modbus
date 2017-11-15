@@ -8,9 +8,10 @@ class tcp:
 
     _sock = None
 
-    def __init__(self, slave_ip, slave_port=502):
+    def __init__(self, slave_ip, slave_port=502, timeout=5):
         self._sock = socket.socket()
         self._sock.connect(socket.getaddrinfo(slave_ip, slave_port)[0][-1])
+        self._sock.settimeout(timeout)
 
     def _create_mbap_hdr(self, slave_id, modbus_pdu):
         trans_id = machine.rng() & 0xFFFF
