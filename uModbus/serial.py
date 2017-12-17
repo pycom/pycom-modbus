@@ -1,16 +1,19 @@
 from uModBus.functions import Functions
 from machine import UART
 import uModBus.const as Const
+from machine import Pin
 import struct
 import time
+import machine
 
 class Serial:
 
     _uart = None
 
-    def __init__(self, uart_id, baudrate=9600, data_bits=8, stop_bits=1, parity=None, pins=None):
+    def __init__(self, uart_id, baudrate=9600, data_bits=8, stop_bits=1, parity=None, pins=None, ctrl_pin=None):
         self._uart = UART(uart_id, baudrate = baudrate, bits = data_bits, parity = parity, \
                           stop = stop_bits, pins = pins)
+        self._ctrlPin = Pin(ctrl_pin, mode=Pin.OUT)
 
     def _calculate_crc16(self, data):
         crc = 0xFFFF
@@ -66,7 +69,12 @@ class Serial:
 
         crc = self._calculate_crc16(serial_pdu)
         serial_pdu.extend(crc)
+
+        self._ctrlPin.value(1)
         self._uart.write(serial_pdu)
+        while not self._uart.tx_done():
+            machine.idle()
+        self._ctrlPin.value(0)
 
         response = self._uart_read()
         resp_data = self._validate_resp_hdr(response, slave_addr, modbus_pdu[0], count)
