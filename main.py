@@ -1,5 +1,5 @@
 from uModBus.serial import Serial
-from uModBus.tcp import tcp
+from uModBus.tcp import TCP
 from network import WLAN
 import machine
 
@@ -15,7 +15,7 @@ while not wlan.isconnected():
 print('WLAN connection succeeded!')
 
 slave_ip = 'slave ip'
-modbus_obj = tcp(slave_ip)
+modbus_obj = TCP(slave_ip)
 
 ######################### RTU SERIAL MODBUS #########################
 #uart_id = 0x01

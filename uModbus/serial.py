@@ -1,6 +1,6 @@
-from uModBus.functions import Functions
-from machine import UART
+import uModBus.functions as functions
 import uModBus.const as Const
+from machine import UART
 from machine import Pin
 import struct
 import time
@@ -8,12 +8,13 @@ import machine
 
 class Serial:
 
-    _uart = None
-
     def __init__(self, uart_id, baudrate=9600, data_bits=8, stop_bits=1, parity=None, pins=None, ctrl_pin=None):
-        self._uart = UART(uart_id, baudrate = baudrate, bits = data_bits, parity = parity, \
-                          stop = stop_bits, pins = pins)
-        self._ctrlPin = Pin(ctrl_pin, mode=Pin.OUT)
+        self._uart = UART(uart_id, baudrate=baudrate, bits=data_bits, parity=parity, \
+                          stop=stop_bits, timeout_chars=5, pins=pins)
+        if ctrl_pin is not None:
+            self._ctrlPin = Pin(ctrl_pin, mode=Pin.OUT)
+        else:
+            self._ctrlPin = None
 
     def _calculate_crc16(self, data):
         crc = 0xFFFF
@@ -30,7 +31,7 @@ class Serial:
 
         return bool_list
 
-    def _to_short(self, byte_array, signed = True):
+    def _to_short(self, byte_array, signed=True):
         response_quantity = int(len(byte_array) / 2)
         fmt = '>' + (('h' if signed else 'H') * response_quantity)
 
@@ -55,7 +56,7 @@ class Serial:
         for x in range(1, 10):
             if self._uart.any():
                 response.extend(self._uart.readall())
-                # Variable length function codes may require multiple reads
+                # variable length function codes may require multiple reads
                 if self._exit_read(response):
                     break
             time.sleep(0.1)
@@ -70,39 +71,38 @@ class Serial:
         crc = self._calculate_crc16(serial_pdu)
         serial_pdu.extend(crc)
 
-        self._ctrlPin.value(1)
+        self._uart_read()   # flush the Rx FIFO
+        if self._ctrlPin:
+            self._ctrlPin(1)
         self._uart.write(serial_pdu)
         while not self._uart.tx_done():
             machine.idle()
-        self._ctrlPin.value(0)
+        if self._ctrlPin:
+            self._ctrlPin(0)
 
-        response = self._uart_read()
-        resp_data = self._validate_resp_hdr(response, slave_addr, modbus_pdu[0], count)
-
-        return resp_data
+        return self._validate_resp_hdr(self._uart_read(), slave_addr, modbus_pdu[0], count)
 
     def _validate_resp_hdr(self, response, slave_addr, function_code, count):
 
         if len(response) == 0:
-            raise OSError('No data received from slave')
+            raise OSError('no data received from slave')
 
         resp_crc = response[-Const.CRC_LENGTH:]
         expected_crc = self._calculate_crc16(response[0:len(response) - Const.CRC_LENGTH])
         if (resp_crc[0] != expected_crc[0]) or (resp_crc[1] != expected_crc[1]):
-            raise OSError('Invalid response CRC')
+            raise OSError('invalid response CRC')
 
         if (response[0] != slave_addr):
-            raise ValueError('Wrong slave address')
+            raise ValueError('wrong slave address')
 
         if (response[1] == (function_code + Const.ERROR_BIAS)):
-            raise ValueError('Slave returned exception code: {:d}'.format(response[2]))
+            raise ValueError('slave returned exception code: {:d}'.format(response[2]))
 
-        hdr_length = Const.RESPONSE_HDR_LENGTH + 1 if count else Const.RESPONSE_HDR_LENGTH
+        hdr_length = (Const.RESPONSE_HDR_LENGTH + 1) if count else Const.RESPONSE_HDR_LENGTH
 
         return response[hdr_length : len(response) - Const.CRC_LENGTH]
 
     def read_coils(self, slave_addr, starting_addr, coil_qty):
-        functions = Functions()
         modbus_pdu = functions.read_coils(starting_addr, coil_qty)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, True)
@@ -111,7 +111,6 @@ class Serial:
         return status_pdu
 
     def read_discrete_inputs(self, slave_addr, starting_addr, input_qty):
-        functions = Functions()
         modbus_pdu = functions.read_discrete_inputs(starting_addr, input_qty)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, True)
@@ -119,8 +118,7 @@ class Serial:
 
         return status_pdu
 
-    def read_holding_registers(self, slave_addr, starting_addr, register_qty, signed = True):
-        functions = Functions()
+    def read_holding_registers(self, slave_addr, starting_addr, register_qty, signed=True):
         modbus_pdu = functions.read_holding_registers(starting_addr, register_qty)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, True)
@@ -128,8 +126,7 @@ class Serial:
 
         return register_value
 
-    def read_input_registers(self, slave_addr, starting_address, register_quantity, signed = True):
-        functions = Functions()
+    def read_input_registers(self, slave_addr, starting_address, register_quantity, signed=True):
         modbus_pdu = functions.read_input_registers(starting_address, register_quantity)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, True)
@@ -138,7 +135,6 @@ class Serial:
         return register_value
 
     def write_single_coil(self, slave_addr, output_address, output_value):
-        functions = Functions()
         modbus_pdu = functions.write_single_coil(output_address, output_value)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, False)
@@ -147,8 +143,7 @@ class Serial:
 
         return operation_status
 
-    def write_single_register(self, slave_addr, register_address, register_value, signed = True):
-        functions = Functions()
+    def write_single_register(self, slave_addr, register_address, register_value, signed=True):
         modbus_pdu = functions.write_single_register(register_address, register_value, signed)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, False)
@@ -158,7 +153,6 @@ class Serial:
         return operation_status
 
     def write_multiple_coils(self, slave_addr, starting_address, output_values):
-        functions = Functions()
         modbus_pdu = functions.write_multiple_coils(starting_address, output_values)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, False)
@@ -168,7 +162,6 @@ class Serial:
         return operation_status
 
     def write_multiple_registers(self, slave_addr, starting_address, register_values, signed=True):
-        functions = Functions()
         modbus_pdu = functions.write_multiple_registers(starting_address, register_values, signed)
 
         resp_data = self._send_receive(modbus_pdu, slave_addr, False)

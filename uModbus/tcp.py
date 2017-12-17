@@ -1,12 +1,10 @@
-from uModBus.functions import Functions
+import uModBus.functions as functions
 import uModBus.const as Const
 import struct
 import socket
 import machine
 
-class tcp:
-
-    _sock = None
+class TCP:
 
     def __init__(self, slave_ip, slave_port=502, timeout=5):
         self._sock = socket.socket()
@@ -26,33 +24,31 @@ class tcp:
 
         return bool_list
 
-    def _to_short(self, byte_array, signed = True):
+    def _to_short(self, byte_array, signed=True):
         response_quantity = int(len(byte_array) / 2)
         fmt = '>' + (('h' if signed else 'H') * response_quantity)
 
         return struct.unpack(fmt, byte_array)
 
     def _validate_resp_hdr(self, response, trans_id, slave_id, function_code, count=False):
-
         rec_tid, rec_pid, rec_len, rec_uid, rec_fc = struct.unpack('>HHHBB', response[:Const.MBAP_HDR_LENGTH + 1])
         if (trans_id != rec_tid):
-            raise ValueError('Wrong transaction Id')
+            raise ValueError('wrong transaction Id')
 
         if (rec_pid != 0):
-            raise ValueError('Invalid protocol Id')
+            raise ValueError('invalid protocol Id')
 
         if (slave_id != rec_uid):
-            raise ValueError('Wrong slave Id')
+            raise ValueError('wrong slave Id')
 
         if (rec_fc == (function_code + Const.ERROR_BIAS)):
-            raise ValueError('Slave returned exception code: {:d}'.format(rec_fc))
+            raise ValueError('slave returned exception code: {:d}'.format(rec_fc))
 
-        hdr_length = Const.MBAP_HDR_LENGTH + 2 if count else Const.MBAP_HDR_LENGTH + 1
+        hdr_length = (Const.MBAP_HDR_LENGTH + 2) if count else (Const.MBAP_HDR_LENGTH + 1)
 
         return response[hdr_length:]
 
     def _send_receive(self, slave_id, modbus_pdu, count):
-
         mbap_hdr, trans_id = self._create_mbap_hdr(slave_id, modbus_pdu)
         self._sock.send(mbap_hdr + modbus_pdu)
 
@@ -62,7 +58,6 @@ class tcp:
         return modbus_data
 
     def read_coils(self, slave_addr, starting_addr, coil_qty):
-        functions = Functions()
         modbus_pdu = functions.read_coils(starting_addr, coil_qty)
 
         response = self._send_receive(slave_addr, modbus_pdu, True)
@@ -71,7 +66,6 @@ class tcp:
         return status_pdu
 
     def read_discrete_inputs(self, slave_addr, starting_addr, input_qty):
-        functions = Functions()
         modbus_pdu = functions.read_discrete_inputs(starting_addr, input_qty)
 
         response = self._send_receive(slave_addr, modbus_pdu, True)
@@ -80,7 +74,6 @@ class tcp:
         return status_pdu
 
     def read_holding_registers(self, slave_addr, starting_addr, register_qty, signed = True):
-        functions = Functions()
         modbus_pdu = functions.read_holding_registers(starting_addr, register_qty)
 
         response = self._send_receive(slave_addr, modbus_pdu, True)
@@ -89,7 +82,6 @@ class tcp:
         return register_value
 
     def read_input_registers(self, slave_addr, starting_address, register_quantity, signed = True):
-        functions = Functions()
         modbus_pdu = functions.read_input_registers(starting_address, register_quantity)
 
         response = self._send_receive(slave_addr, modbus_pdu, True)
@@ -98,7 +90,6 @@ class tcp:
         return register_value
 
     def write_single_coil(self, slave_addr, output_address, output_value):
-        functions = Functions()
         modbus_pdu = functions.write_single_coil(output_address, output_value)
 
         response = self._send_receive(slave_addr, modbus_pdu, False)
@@ -107,8 +98,7 @@ class tcp:
 
         return operation_status
 
-    def write_single_register(self, slave_addr, register_address, register_value, signed = True):
-        functions = Functions()
+    def write_single_register(self, slave_addr, register_address, register_value, signed=True):
         modbus_pdu = functions.write_single_register(register_address, register_value, signed)
 
         response = self._send_receive(slave_addr, modbus_pdu, False)
@@ -118,7 +108,6 @@ class tcp:
         return operation_status
 
     def write_multiple_coils(self, slave_addr, starting_address, output_values):
-        functions = Functions()
         modbus_pdu = functions.write_multiple_coils(starting_address, output_values)
 
         response = self._send_receive(slave_addr, modbus_pdu, False)
@@ -128,7 +117,6 @@ class tcp:
         return operation_status
 
     def write_multiple_registers(self, slave_addr, starting_address, register_values, signed=True):
-        functions = Functions()
         modbus_pdu = functions.write_multiple_registers(starting_address, register_values, signed)
 
         response = self._send_receive(slave_addr, modbus_pdu, False)
