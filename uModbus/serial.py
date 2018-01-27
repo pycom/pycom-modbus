@@ -71,13 +71,13 @@ class Serial:
         crc = self._calculate_crc16(serial_pdu)
         serial_pdu.extend(crc)
 
-        self._uart.read()   # flush the Rx FIFO
+        # flush the Rx FIFO
+        self._uart.read()
         if self._ctrlPin:
             self._ctrlPin(1)
         self._uart.write(serial_pdu)
-        time.sleep_ms(2)
-        while not self._uart.tx_done():
-            time.sleep_ms(2)
+        while not self._uart.wait_tx_done(2):
+            machine.idle()
         if self._ctrlPin:
             self._ctrlPin(0)
 
