@@ -10,7 +10,7 @@ class Serial:
 
     def __init__(self, uart_id, baudrate=9600, data_bits=8, stop_bits=1, parity=None, pins=None, ctrl_pin=None):
         self._uart = UART(uart_id, baudrate=baudrate, bits=data_bits, parity=parity, \
-                          stop=stop_bits, timeout_chars=5, pins=pins)
+                          stop=stop_bits, timeout_chars=10, pins=pins)
         if ctrl_pin is not None:
             self._ctrlPin = Pin(ctrl_pin, mode=Pin.OUT)
         else:
@@ -77,7 +77,7 @@ class Serial:
             self._ctrlPin(1)
         self._uart.write(serial_pdu)
         while not self._uart.wait_tx_done(2):
-            machine.idle()
+            time.sleep_ms(5)
         if self._ctrlPin:
             self._ctrlPin(0)
 
