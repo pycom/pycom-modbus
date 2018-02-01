@@ -77,7 +77,7 @@ class Serial:
             self._ctrlPin(1)
         self._uart.write(serial_pdu)
         while not self._uart.wait_tx_done(2):
-            time.sleep_ms(5)
+            machine.idle()
         if self._ctrlPin:
             self._ctrlPin(0)
 
