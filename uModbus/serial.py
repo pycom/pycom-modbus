@@ -15,6 +15,7 @@ class Serial:
             self._ctrlPin = Pin(ctrl_pin, mode=Pin.OUT)
         else:
             self._ctrlPin = None
+        self.char_time_ms = (1000 * (data_bits + stop_bits + 2)) // baudrate
 
     def _calculate_crc16(self, data):
         crc = 0xFFFF
@@ -53,13 +54,13 @@ class Serial:
     def _uart_read(self):
         response = bytearray()
 
-        for x in range(1, 10):
+        for x in range(1, 40):
             if self._uart.any():
                 response.extend(self._uart.readall())
                 # variable length function codes may require multiple reads
                 if self._exit_read(response):
                     break
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         return response
 
@@ -76,9 +77,10 @@ class Serial:
         if self._ctrlPin:
             self._ctrlPin(1)
         self._uart.write(serial_pdu)
-        while not self._uart.wait_tx_done(2):
-            machine.idle()
         if self._ctrlPin:
+            while not self._uart.wait_tx_done(2):
+                machine.idle()
+            time.sleep_ms(1 + self.char_time_ms)
             self._ctrlPin(0)
 
         return self._validate_resp_hdr(self._uart_read(), slave_addr, modbus_pdu[0], count)
