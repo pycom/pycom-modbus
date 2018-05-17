@@ -47,7 +47,7 @@ def write_multiple_coils(starting_address, value_list):
     fmt = 'B' * len(output_value)
 
     return struct.pack('>BHHB' + fmt, Const.WRITE_MULTIPLE_COILS, starting_address,
-                        len(value_list), (len(value_list) // 8) + 1, *output_value)
+                        len(value_list), ((len(value_list) - 1) // 8) + 1, *output_value)
 
 def write_multiple_registers(starting_address, register_values, signed=True):
     quantity = len(register_values)
