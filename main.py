@@ -29,6 +29,8 @@ modbus_obj = TCP(slave_ip)
 ######################### RTU SERIAL MODBUS #########################
 #uart_id = 0x01
 #modbus_obj = Serial(uart_id, pins=('P9', 'P10'))
+# if the serial modbus requires a ctrl pin, you can set it like this:
+#modbus_obj = Serial(uart_id, pins=('P9','P10'), ctrl_pin='P8')
 
 ######################### READ COILS #########################
 #slave_addr=0x0A
