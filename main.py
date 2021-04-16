@@ -85,7 +85,7 @@ modbus_obj = TCP(slave_ip)
 #output_flag = 'Success' if return_flag else 'Failure'
 #print('Writing single coil status: ' + output_flag)
 
-###################### WRITE MULIPLE COILS ##################
+###################### WRITE MULTIPLE COILS ##################
 #slave_addr=0x0A
 #starting_address=0x00
 #output_values=[1,1,1,0,0,1,1,1,0,0,1,1,1]
@@ -94,7 +94,7 @@ modbus_obj = TCP(slave_ip)
 #output_flag = 'Success' if return_flag else 'Failure'
 #print('Writing multiple coil status: ' + output_flag)
 
-###################### WRITE MULIPLE REGISTERS ##################
+###################### WRITE MULTIPLE REGISTERS ##################
 slave_addr=0x0A
 register_address=0x01
 register_values=[2, -4, 6, -256, 1024]
